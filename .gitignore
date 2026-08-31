@@ -1,0 +1,33 @@
+# Environments & Secrets
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+helios_env/
+
+# Browser profiles, user session caches & cookies
+browser_profile/
+.browser_profile/
+
+# Downloads, generated media & models
+downloads/
+models/
+logs/
+*.mp4
+*.mov
+*.wav
+*.mp3
+
+# Nested repository cache & build artifacts
+short-video-maker-repo/node_modules/
+short-video-maker-repo/dist/
+short-video-maker-repo/.env
+
+# System files
+.DS_Store
