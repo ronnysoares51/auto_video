@@ -11,6 +11,7 @@ Architecture:
 ================================================================================
 """
 import sys
+import os
 import time
 import shutil
 import argparse
@@ -192,7 +193,7 @@ def run_marketing_pipeline():
             # ------------------------------------------------------------------
             # STEP 5: TikTok Creator Center Publishing
             # ------------------------------------------------------------------
-            if args.skip_tiktok:
+            if args.skip_tiktok or os.getenv("ENABLE_TIKTOK_PUBLISH", "false").strip().lower() not in ("true", "1", "yes"):
                 log_info("[Step 4] --skip-tiktok flag enabled. Skipping TikTok upload.")
                 cycle_data["upload_status"] = "⏭️ Skipped (Local Only)"
                 cycle_data["final_status"] = "SUCCESS"
