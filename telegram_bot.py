@@ -18,6 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
 API = f"https://api.telegram.org/bot{TOKEN}"
 DOWNLOADS = BASE_DIR / "downloads"
 LOGS = BASE_DIR / "logs"
@@ -87,7 +88,7 @@ def generate():
         elif files:
             result = f"✅ Processo finalizado, {len(files)} vídeo(s) encontrado(s)."
             say(result)
-            for file in files[:3]:
+            for file in ([] if CHANNEL_ID else files[:3]):
                 try:
                     send_video(file)
                 except Exception as exc:
@@ -99,7 +100,7 @@ def generate():
             _job["result"] = result
     except Exception as exc:
         with _lock:
-            _job["result"] = f"Erro: {type(exc).__name__}: {exc}"
+            _job["result"] = f"Erro: {type(exc).__name__}"
         try:
             say(f"❌ Falha no bot: {type(exc).__name__}. Consulte o log.")
         except requests.RequestException:

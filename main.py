@@ -3,7 +3,7 @@ Main Orchestrator for Fully Autonomous 3-Step Video Pipeline.
 Loop Workflow (N cycles):
   [Step 1] Gemini Web: Generate viral prompt & TikTok caption (JSON)
   [Step 2] Google Flow Web: Generate AI video & download MP4
-  [Step 3] TikTok Web: Upload MP4, type caption & publish
+  [Step 3] Publish to the configured Telegram channel and optionally TikTok
 
 Notification:
   Sends summary report to Telegram at the end of the run.
@@ -32,15 +32,17 @@ from gemini_handler import GeminiHandler
 from flow_handler import FlowHandler
 from tiktok_handler import TikTokHandler
 from notifier import send_telegram_alert
+from telegram_publisher import publish_video
 
 def run_end_to_end_pipeline():
     """Main execution loop for all cycles."""
     start_time = time.time()
     success_count = 0
     fail_count = 0
+    enable_tiktok = os.getenv("ENABLE_TIKTOK_PUBLISH", "false").strip().lower() in ("true", "1", "yes")
 
     print_banner(
-        title="🤖 AUTONOMOUS RPA: GEMINI -> GOOGLE FLOW -> TIKTOK",
+        title="🤖 AUTONOMOUS VIDEO PIPELINE: GEMINI -> GOOGLE FLOW -> TELEGRAM",
         subtitle=f"Target: {LOOP_COUNT} Cycles | 100% Free & API-Less | Ad-Blocker Active"
     )
 
@@ -51,7 +53,7 @@ def run_end_to_end_pipeline():
     # 2. Instantiate Step Handlers
     gemini = GeminiHandler(page)
     flow = FlowHandler(page)
-    tiktok = TikTokHandler(page)
+    tiktok = TikTokHandler(page) if enable_tiktok else None
 
     results_summary: List[Dict[str, Any]] = []
 
@@ -123,20 +125,32 @@ def run_end_to_end_pipeline():
                     page.wait_for_timeout(3000)
 
             if not video_file or not video_file.exists():
-                log_error(f"Failed to generate video in Cycle [{cycle_id}]. Skipping TikTok upload.")
+                log_error(f"Failed to generate video in Cycle [{cycle_id}]. Skipping publication.")
                 fail_count += 1
                 results_summary.append(cycle_data)
                 continue
 
             # ------------------------------------------------------------------
-            # STEP 3: TikTok Video Upload & Publishing
+            # STEP 3: Telegram channel and optional TikTok publication
             # ------------------------------------------------------------------
-            # Safe default: generate locally and require explicit opt-in to publish.
-            if os.getenv("ENABLE_TIKTOK_PUBLISH", "false").strip().lower() not in ("true", "1", "yes"):
-                log_info("[Step 3] Publishing disabled. Video saved for review: " + str(video_file))
-                cycle_data["upload_status"] = "⏭️ Review required"
-                cycle_data["final_status"] = "GENERATED_NOT_PUBLISHED"
-                success_count += 1
+            telegram_status = publish_video(video_file, caption_text)
+            telegram_failed = telegram_status in ("failed", "unconfirmed")
+            if tiktok is None:
+                cycle_data["upload_status"] = {
+                    "published": "✅ Posted",
+                    "duplicate": "✅ Already",
+                    "failed": "❌ Failed",
+                    "unconfirmed": "⚠️ Pending",
+                    "disabled": "⏭️ Skipped",
+                }[telegram_status]
+                if telegram_failed:
+                    fail_count += 1
+                    cycle_data["final_status"] = "PARTIAL"
+                else:
+                    success_count += 1
+                    cycle_data["final_status"] = (
+                        "GENERATED_NOT_PUBLISHED" if telegram_status == "disabled" else "SUCCESS"
+                    )
                 results_summary.append(cycle_data)
                 continue
 
@@ -163,7 +177,7 @@ def run_end_to_end_pipeline():
                     handle_unexpected_popups(page)
                     page.wait_for_timeout(3000)
 
-            if upload_success:
+            if upload_success and not telegram_failed:
                 success_count += 1
                 cycle_data["final_status"] = "SUCCESS"
                 log_success(f"🎉 Cycle [{cycle_id}/{LOOP_COUNT}] completed successfully!")

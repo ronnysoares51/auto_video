@@ -13,14 +13,13 @@ def send_telegram_alert(
     message: str = None
 ):
     """Sends a formatted summary report to your Telegram chat."""
-    if not config.TELEGRAM_BOT_TOKEN or not config.TELEGRAM_CHAT_ID:
-        log_warning("Telegram token or Chat ID is missing. Notification skipped.")
+    if not config.TELEGRAM_BOT_TOKEN or not config.TELEGRAM_CHAT_ID or config.TELEGRAM_CHAT_ID.startswith("your_"):
         return
 
     if not message:
         message = (
             f"🤖 WebResume.live Bot Report\n\n"
-            f"✅ Successfully Posted: {success_count}\n"
+            f"✅ Successful cycles: {success_count}\n"
             f"❌ Failed: {fail_count}\n"
             f"⏱️ Total Runtime: {runtime_mins:.1f} minutes\n\n"
             f"Daily task completed. Logs saved on the server."
@@ -35,12 +34,12 @@ def send_telegram_alert(
     try:
         log_info("Sending Telegram notification summary...")
         response = requests.post(url, json=payload, timeout=10)
-        if response.status_code == 200:
+        if response.ok and response.json().get("ok") is True:
             log_success("📲 Telegram report successfully sent to your phone!")
         else:
-            log_warning(f"Telegram notification error: {response.text}")
-    except Exception as e:
-        log_error(f"Telegram connection error: {e}")
+            log_warning(f"Telegram notification error (HTTP {response.status_code}).")
+    except (requests.RequestException, ValueError, AttributeError) as e:
+        log_error(f"Telegram notification error ({type(e).__name__}).")
 
 if __name__ == "__main__":
     # Test notification directly

@@ -15,8 +15,8 @@ An end-to-end autonomous RPA video generation and social media publishing pipeli
 graph TD
     A[Start: main.py / pipeline] --> B[Step 1: Gemini AI Web RPA]
     B -->|Generate Viral Prompt & Captions| C[Step 2: Video Generation Engine]
-    C -->|Render & Download MP4| D[Step 3: TikTok Creator Center RPA]
-    D -->|Upload Video, Set Captions & Publish| E{Loop Count Reached?}
+    C -->|Render & Download MP4| D[Step 3: Telegram channel and optional TikTok]
+    D --> E{Loop Count Reached?}
     E -- No --> B
     E -- Yes --> F[Summary Report & Telegram Alert]
 ```
@@ -106,6 +106,8 @@ auto_video/
 ---
 
 ## ⚡ Running the Pipeline
+
+Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHANNEL_ID` to publish each generated MP4 to your channel. TikTok publishing is off by default. See [Telegram setup](TELEGRAM_BOT_SETUP.md) for permissions, scheduling, and duplicate protection.
 
 ### Run Full Autonomous Bot
 ```bash
