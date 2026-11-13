@@ -7,7 +7,7 @@ and strict JSON cleaning/parsing.
 import re
 import json
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from config import (
