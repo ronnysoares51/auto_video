@@ -9,6 +9,7 @@ Notification:
   Sends summary report to Telegram at the end of the run.
 """
 import sys
+import os
 import time
 from typing import List, Dict, Any
 
@@ -130,6 +131,15 @@ def run_end_to_end_pipeline():
             # ------------------------------------------------------------------
             # STEP 3: TikTok Video Upload & Publishing
             # ------------------------------------------------------------------
+            # Safe default: generate locally and require explicit opt-in to publish.
+            if os.getenv("ENABLE_TIKTOK_PUBLISH", "false").strip().lower() not in ("true", "1", "yes"):
+                log_info("[Step 3] Publishing disabled. Video saved for review: " + str(video_file))
+                cycle_data["upload_status"] = "⏭️ Review required"
+                cycle_data["final_status"] = "GENERATED_NOT_PUBLISHED"
+                success_count += 1
+                results_summary.append(cycle_data)
+                continue
+
             upload_success = False
             for attempt in range(1, MAX_RETRIES_PER_STEP + 1):
                 try:
