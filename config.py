@@ -4,6 +4,9 @@ Controls Loop Counts, Target URLs, Timeouts, and CSS/XPath Selectors.
 """
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 # ==============================================================================
 # 1. BASE DIRECTORIES & FILE PATHS
@@ -47,8 +50,8 @@ BROWSER_TIMEOUT_MS = 60000
 VIEWPORT = {"width": 1440, "height": 900}
 
 # Telegram Notification Settings
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8799269884:AAFZ6xgkrOCcZbjeiru547keMwF8ubDxVAI")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "8786031812")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
 
 # ==============================================================================
