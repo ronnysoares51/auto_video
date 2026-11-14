@@ -1,7 +1,7 @@
 """Agenda local para 3 entregas diárias. Horários brasileiros em America/Sao_Paulo."""
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import subprocess
 import sys
@@ -21,9 +21,13 @@ def run_pending(now):
     today = now.date().isoformat()
     if state.get("date") != today:
         state = {"date": today, "completed_slots": []}
-    for hour in HOURS:
-        if now.hour < hour or hour in state["completed_slots"]:
-            continue
+    due = [hour for hour in HOURS if hour <= now.hour and hour not in state["completed_slots"]]
+    if not due:
+        return
+    # Se o serviço iniciou tarde, não dispare lotes antigos em sequência.
+    hour = max(due)
+    state["completed_slots"].extend(due)
+    if hour in due:
         # Marca antes de executar para impedir execução duplicada após reinício.
         state["completed_slots"].append(hour)
         MARKER.parent.mkdir(parents=True, exist_ok=True)
