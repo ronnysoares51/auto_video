@@ -32,7 +32,6 @@ O serviço usa apenas imagens cadastradas no arquivo `data/products.json`. Com o
 ## Executar uma vez / testar
 ```bash
 docker compose run --rm bot python main.py
-docker compose run --rm --no-deps --entrypoint python bot -m unittest discover -s tests
 ```
 Para o teste de Python fora do contêiner, execute `python -m unittest discover -s tests` no diretório do bot. Testes ficam em `tests/` e a imagem de produção não os copia.
 
