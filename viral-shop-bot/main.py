@@ -11,13 +11,15 @@ import tempfile
 from urllib.parse import urlparse
 
 import requests
-from PIL import Image, ImageOps, ImageDraw
+from PIL import Image, ImageOps
+from selector import select, product_key, rank, read_history, record_delivery
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 CHAT = os.getenv("TELEGRAM_CHAT_ID", "")
 PRODUCTS = Path(os.getenv("PRODUCTS_JSON", "/app/data/products.json"))
 OUTPUT = Path(os.getenv("OUTPUT_DIR", "/app/output"))
 MAX_PRODUCTS = max(1, min(10, int(os.getenv("MAX_PRODUCTS", "3"))))
+HISTORY = Path(os.getenv("HISTORY_JSON", "/app/output/history.json"))
 SESSION = requests.Session()
 SESSION.trust_env = False
 
@@ -102,15 +104,19 @@ def send_telegram(video, message):
 
 
 def main():
-    items = json.loads(PRODUCTS.read_text())
+    if not TOKEN or not CHAT:
+        raise RuntimeError("Defina TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID")
+    items = json.loads(PRODUCTS.read_text(encoding="utf-8"))
+    if not isinstance(items, list):
+        raise ValueError("O feed deve ser uma lista JSON")
     OUTPUT.mkdir(parents=True, exist_ok=True)
+    delivered = read_history(HISTORY)
+    candidates = select(items, delivered, limit=len(items))
     produced = 0
-    for idx, item in enumerate(items):
+    for item in candidates:
         if produced >= MAX_PRODUCTS:
             break
-        if item.get("image_rights_confirmed") is not True or not item.get("image_urls"):
-            print(f"Ignorando item {idx}: fotos ausentes ou uso não autorizado")
-            continue
+        key = product_key(item)
         try:
             with tempfile.TemporaryDirectory() as temp:
                 local = []
@@ -118,15 +124,21 @@ def main():
                     filepath = Path(temp) / f"img{j}.jpg"
                     download_image(url, filepath)
                     local.append(filepath)
-                target = OUTPUT / f"video_{idx+1:03d}.mp4"
+                target = OUTPUT / f"video_{key}.mp4"
                 make_video(local, target)
-                message = f"{item['name']}\n{item.get('caption', '')}\n{item.get('product_url', '')}"
+                message = (
+                    f"{item['name']}\\n"
+                    f"Score estimado: {rank(item)}\\n"
+                    f"{item.get('caption', '')}\\n"
+                    f"{item.get('product_url', '')}"
+                )
                 send_telegram(target, message)
+                record_delivery(HISTORY, delivered, item)
                 produced += 1
-                print(f"Entregue: {target.name}")
+                print(f"Entregue: {target.name}", flush=True)
         except Exception as exc:
-            print(f"Falha no produto {idx}: {type(exc).__name__}: {exc}")
-    print(f"Total de vídeos enviados: {produced}")
+            print(f"Falha no produto {key}: {type(exc).__name__}: {exc}", flush=True)
+    print(f"Total de vídeos enviados: {produced}", flush=True)
 
 
 if __name__ == "__main__":
