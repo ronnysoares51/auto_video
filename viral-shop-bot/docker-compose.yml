@@ -1,8 +1,10 @@
 services:
   bot:
     build: .
-    restart: "no"
+    restart: unless-stopped
     env_file: .env
+    environment:
+      TZ: America/Sao_Paulo
     volumes:
       - ./data:/app/data:ro
       - ./output:/app/output
