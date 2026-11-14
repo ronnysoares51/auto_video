@@ -1,25 +1,64 @@
-# Viral Shop Bot
+# Viral Shop Bot — pesquisa → análise → vídeo → Telegram
 
-Robô independente para pesquisar oportunidades de produtos em TikTok Shop/Shopee, montar vídeos verticais usando **imagens reais autorizadas** e entregar MP4 + legenda ao Telegram. Publicação final é manual.
+Projeto isolado em `auto_video/viral-shop-bot`; nenhum outro bot é modificado.
+**Estado: código versionado no GitHub; NÃO instalado na VPS.**
 
-## Estado
-**Base inicial instalada no repositório, não executada na VPS.** Esta versão já contém um pipeline funcional para gerar vídeo a partir de produtos com URLs de imagens fornecidas em um feed JSON. A mineração automática em TikTok Shop e Shopee **ainda precisa de adaptadores de dados confiáveis**, e não é simulada como pronta.
+## O que funciona neste estágio
+- Recebe um feed JSON de produtos com **fotos com direito de uso confirmado**.
+- Classifica candidatos por volume de visualizações, taxa de curtidas, vendas informadas e crescimento informado; não inventa métricas ausentes.
+- Evita reenvios pela URL do produto (histórico persistente em `output/history.json`).
+- Monta slideshow de 15 segundos, 1080x1920, usando FFmpeg e imagens originais.
+- Envia o vídeo por bot do Telegram com link e score estimado.
+- Agenda **uma geração em cada um dos horários 08h, 13h e 19h** (America/Sao_Paulo), salvo falha, falta de produtos ou credenciais. O registro do slot evita repetição por reinício.
 
-## Como executar
-1. Copie `.env.example` para `.env` e preencha TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
-2. Cadastre produtos e URLs de fotos autorizadas no arquivo `data/products.json` (exemplo disponível). Cada item deve possuir `image_rights_confirmed: true`; só indique true após obter direito de uso.
-3. Rode `docker compose up --build -d` **dentro deste diretório**. A execução de desenvolvimento é manual: `docker compose run --rm bot python main.py`.
-4. Para produção, a automação de agendamento e a integração com dados reais serão ativadas após validar as fontes e as credenciais.
+## O que AINDA não funciona
+- Mineração autônoma de TikTok Shop/Shopee: falta conectar fontes autorizadas com URLs, métricas e direitos de uso.
+- Roteirização com IA, narração PT-BR, música, hashtags e legendas dinâmicas.
+- Conexão direta ou implantação na VPS. Não há credenciais de Telegram nem de fontes comerciais no código.
 
-## Segurança e operação
-- Não comitar credenciais. `.env` está no .gitignore.
-- Os arquivos são separados do restante do repositório `auto_video`.
-- A ferramenta **não** publica vídeos no TikTok ou na Shopee.
-- Links de imagem são validados e bloqueiam endereços internos para evitar SSRF. Não use imagens de terceiros sem autorização.
-- Não inclui integração com Claude, Gemini ou APIs de vídeo por enquanto. A montagem inicial é com FFmpeg.
+## Preparar na VPS quando autorizado
+```bash
+git clone https://github.com/ronnysoares51/auto_video.git
+cd auto_video/viral-shop-bot
+cp .env.example .env
+# Preencha TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID diretamente na VPS (nunca no GitHub)
+mkdir -p output
+sudo chown 10001:10001 output
+docker compose up -d --build
+docker compose logs -f bot
+```
+O serviço usa apenas imagens cadastradas no arquivo `data/products.json`. Com o exemplo vazio, nada é enviado. A VPS deve ter Docker Compose e acesso à internet.
 
-## Próximas etapas
-- Adaptadores oficiais ou autorizados para catálogo e métricas de TikTok Shop e Shopee;
-- ranking por crescimento e evidências comerciais disponíveis, com deduplicação;
-- geração original de roteiros e narração PT-BR;
-- agendador para três entregas diárias, logs, alertas e painel.
+## Executar uma vez / testar
+```bash
+docker compose run --rm bot python main.py
+docker compose run --rm --no-deps --entrypoint python bot -m unittest discover -s tests
+```
+Para o teste de Python fora do contêiner, execute `python -m unittest discover -s tests` no diretório do bot. Testes ficam em `tests/` e a imagem de produção não os copia.
+
+## Formato de entrada
+```json
+[
+  {
+    "name": "Produto exemplo",
+    "product_url": "https://loja.exemplo.com/produto/123",
+    "image_urls": ["https://cdn.exemplo.com/foto1.jpg"],
+    "image_rights_confirmed": true,
+    "views": 10000,
+    "likes": 500,
+    "sales": 22,
+    "growth_pct": 45,
+    "caption": "Conheça o produto"
+  }
+]
+```
+`views`, `likes`, `sales` e `growth_pct` são opcionais e devem ser dados verificáveis de uma fonte real. `image_rights_confirmed` não deve ser marcado como true sem permissão.
+
+## Segurança
+- Credenciais fora do controle de versão (`.env` ignorado).
+- Links de imagens HTTPS, sem redirecionamentos e com validação prévia de IP público; para proteção de produção contra DNS rebinding, a rede da VPS também precisa bloquear egressos para endereços privados.
+- Nenhuma postagem automática em TikTok ou Shopee.
+- O score é **heurístico**, não uma previsão comprovada de vendas.
+
+## Próximo trabalho
+Conectar feeds oficiais/autorizados do TikTok Shop e Shopee, IA de roteiros, voz PT-BR e revisão de qualidade. A integração deve respeitar permissões e disponibilidade das APIs de cada plataforma.
