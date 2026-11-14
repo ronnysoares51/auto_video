@@ -3,7 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certi
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY main.py .
+COPY main.py selector.py scheduler.py ./
 RUN useradd --create-home --uid 10001 bot && mkdir -p /app/output && chown bot:bot /app/output
 USER bot
-CMD ["python","main.py"]
+CMD ["python", "scheduler.py"]
